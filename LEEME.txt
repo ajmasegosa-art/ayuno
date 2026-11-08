@@ -1,0 +1,18 @@
+APP AYUNO - Cómo obtener la APK
+================================
+1. Entra en https://github.com (crea una cuenta gratis si no tienes).
+2. Pulsa "+" > "New repository", nombre: ayuno, y "Create repository".
+3. En la página del repositorio pulsa "uploading an existing file".
+4. Desde el ordenador, descomprime este ZIP y ARRASTRA TODO el contenido
+   de la carpeta (incluida la carpeta oculta .github) a la ventana. Pulsa "Commit changes".
+5. Ve a la pestaña "Actions": verás "Compilar APK" en marcha (3-6 minutos).
+6. Cuando salga el check verde, entra en la ejecución y abajo, en "Artifacts",
+   descarga "Ayuno-APK". Es un ZIP que contiene Ayuno.apk.
+7. Pasa Ayuno.apk al móvil (por ejemplo por email o Google Drive), ábrelo y
+   permite "instalar apps desconocidas" cuando Android lo pida.
+8. Al abrir la app, acepta las notificaciones. Pulsa "Permisos de alarma" y
+   activa "Alarmas y recordatorios" para que suenen a la hora exacta.
+
+Si la carpeta .github no se sube al arrastrar: en GitHub pulsa "Add file" >
+"Create new file", escribe como nombre  .github/workflows/compilar-apk.yml
+y pega el contenido de ese archivo.

@@ -1,0 +1,6 @@
+{
+  "appId": "es.agustin.ayuno",
+  "appName": "Ayuno",
+  "webDir": "www",
+  "plugins": { "LocalNotifications": { "iconColor": "#34d399" } }
+}

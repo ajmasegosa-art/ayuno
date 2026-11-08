@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1115">
+<title>Contador de ayuno intermitente</title>
+<style>
+  :root{
+    --bg:#0f1115; --card:#181b22; --line:#262a33; --txt:#eef0f4; --mut:#8b92a1;
+    --acc:#34d399; --acc2:#10b981; --warn:#f59e0b; --bad:#f87171;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;background:var(--bg);color:var(--txt);font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+  main{max-width:520px;margin:0 auto;padding:calc(20px + max(env(safe-area-inset-top,0px),var(--safe-area-inset-top,0px))) 16px calc(48px + max(env(safe-area-inset-bottom,0px),var(--safe-area-inset-bottom,0px)))}
+  h1{font-size:20px;margin:4px 0 16px;font-weight:650;letter-spacing:-.01em}
+  h2{font-size:15px;color:var(--mut);font-weight:600;margin:28px 0 10px;text-transform:uppercase;letter-spacing:.06em}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px}
+  .ring-wrap{position:relative;width:260px;height:260px;margin:6px auto 10px}
+  .ring-wrap svg{transform:rotate(-90deg)}
+  .ring-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+  .state{font-size:13px;color:var(--mut);text-transform:uppercase;letter-spacing:.08em}
+  .time{font-size:46px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.02em;margin:2px 0}
+  .sub{font-size:14px;color:var(--mut)}
+  .sub b{color:var(--txt);font-weight:600}
+  .goals{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin:8px 0 14px}
+  .goal{border:1px solid var(--line);background:transparent;color:var(--txt);border-radius:999px;padding:7px 13px;font-size:14px;cursor:pointer}
+  .goal.on{background:var(--acc);border-color:var(--acc);color:#04221a;font-weight:650}
+  .btn{display:block;width:100%;border:0;border-radius:14px;padding:16px;font-size:17px;font-weight:650;cursor:pointer}
+  .btn.start{background:var(--acc);color:#04221a}
+  .btn.stop{background:var(--bad);color:#2a0606}
+  .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--txt);font-weight:500;font-size:15px;padding:12px;margin-top:8px}
+  .times{display:flex;justify-content:space-between;margin-top:12px;font-size:13px;color:var(--mut)}
+  .times b{display:block;color:var(--txt);font-size:15px;font-weight:600}
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
+  .stat .v{font-size:24px;font-weight:700;font-variant-numeric:tabular-nums}
+  .stat .l{font-size:13px;color:var(--mut)}
+  .chart{padding:14px 12px 10px}
+  .chart svg{width:100%;height:auto;display:block}
+  .legend{display:flex;gap:14px;font-size:12px;color:var(--mut);margin-top:6px;justify-content:center}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+  .hist{list-style:none;margin:0;padding:0}
+  .hist li{display:flex;align-items:center;gap:12px;padding:12px 4px;border-bottom:1px solid var(--line)}
+  .hist li:last-child{border-bottom:0}
+  .dot{width:10px;height:10px;border-radius:50%;flex:none}
+  .hist .main{flex:1;min-width:0}
+  .hist .d{font-weight:600}
+  .hist .r{font-size:13px;color:var(--mut)}
+  .hist .h{font-variant-numeric:tabular-nums;font-weight:650}
+  .del{background:none;border:0;color:var(--mut);font-size:18px;cursor:pointer;padding:4px 6px}
+  .empty{color:var(--mut);text-align:center;padding:18px 0;font-size:14px}
+  .note{font-size:12px;color:var(--mut);text-align:center;margin-top:24px}
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;padding:20px;z-index:10}
+  .modal.open{display:flex}
+  .modal .card{width:100%;max-width:380px}
+  .modal h3{margin:0 0 12px;font-size:17px}
+  .modal p{margin:0 0 14px;color:var(--mut);font-size:14px}
+  .modal input{width:100%;background:#0f1115;border:1px solid var(--line);color:var(--txt);border-radius:10px;padding:12px;font-size:16px;color-scheme:dark}
+  .row{display:flex;gap:8px;margin-top:14px}
+  .row .btn{padding:12px;font-size:15px}
+  .muted-btn{background:#262a33;color:var(--txt)}
+  main{padding-bottom:calc(110px + max(env(safe-area-inset-bottom,0px),var(--safe-area-inset-bottom,0px)))!important}
+  .tab{display:none}.tab.on{display:block}
+  nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:5;background:rgba(15,17,21,.96);border-top:1px solid var(--line);display:flex;justify-content:center;padding:6px 0 calc(6px + max(env(safe-area-inset-bottom,0px),var(--safe-area-inset-bottom,0px)));backdrop-filter:blur(8px)}
+  nav.tabs button{flex:1;max-width:200px;background:none;border:0;color:var(--mut);font-size:12px;padding:6px 0;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px}
+  nav.tabs button span{font-size:22px;line-height:1}
+  nav.tabs button.on{color:var(--acc);font-weight:650}
+  .field{display:flex;gap:8px;align-items:stretch}
+  .field input{min-width:0;background:#0f1115;border:1px solid var(--line);color:var(--txt);border-radius:12px;padding:12px;font-size:16px;color-scheme:dark}
+  .field .kg{flex:1;font-size:26px;font-weight:700;text-align:center}
+  .field .date{flex:1}
+  .lbl{font-size:13px;color:var(--mut);margin:0 0 6px}
+  .seg{display:flex;background:#0f1115;border:1px solid var(--line);border-radius:10px;padding:3px;gap:3px;margin-bottom:10px}
+  .seg button{flex:1;background:none;border:0;color:var(--mut);padding:7px 0;border-radius:8px;font-size:13px;cursor:pointer}
+  .seg button.on{background:var(--line);color:var(--txt);font-weight:600}
+  table.rep{width:100%;border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums}
+  table.rep th{color:var(--mut);font-weight:500;font-size:12px;text-align:right;padding:6px 4px;border-bottom:1px solid var(--line)}
+  table.rep td{text-align:right;padding:9px 4px;border-bottom:1px solid var(--line)}
+  table.rep th:first-child,table.rep td:first-child{text-align:left}
+  table.rep tr:last-child td{border-bottom:0}
+  .down{color:var(--acc)}.up{color:var(--bad)}
+  .summary{font-size:15px;line-height:1.55}
+  .summary b{color:var(--acc)}
+  .toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#262a33;color:var(--txt);padding:10px 16px;border-radius:10px;font-size:14px;z-index:20;display:none}
+  input,textarea{user-select:text;-webkit-user-select:text}
+</style>
+</head>
+<body>
+<main>
+<section class="tab on" id="tab-ayuno">
+  <h1>⏱️ Ayuno intermitente</h1>
+
+  <section class="card">
+    <div class="ring-wrap">
+      <svg width="260" height="260" viewBox="0 0 260 260">
+        <circle cx="130" cy="130" r="112" fill="none" stroke="#262a33" stroke-width="16"/>
+        <circle id="ring" cx="130" cy="130" r="112" fill="none" stroke="var(--acc)" stroke-width="16" stroke-linecap="round"
+          stroke-dasharray="703.7" stroke-dashoffset="703.7" style="transition:stroke-dashoffset .6s"/>
+      </svg>
+      <div class="ring-center">
+        <div class="state" id="state">Sin ayunar</div>
+        <div class="time" id="time">00:00:00</div>
+        <div class="sub" id="sub">Elige objetivo y pulsa iniciar</div>
+      </div>
+    </div>
+
+    <div class="goals" id="goals"></div>
+    <button class="btn start" id="mainBtn">Iniciar ayuno</button>
+    <button class="btn ghost" id="editBtn" style="display:none">Cambiar hora de inicio</button>
+    <div class="times" id="times" style="display:none">
+      <div>Inicio<b id="tStart">–</b></div>
+      <div style="text-align:right">Objetivo<b id="tEnd">–</b></div>
+    </div>
+  </section>
+
+  <h2>Alarmas</h2>
+  <div class="card">
+    <p class="sub" style="margin:0 0 10px">Suena cuando el ayuno llegue a las horas marcadas:</p>
+    <div class="goals" id="alarms" style="justify-content:flex-start;margin:0 0 12px"></div>
+    <div style="display:flex;gap:8px">
+      <input type="number" id="customH" min="1" max="72" step="0.5" placeholder="Otras horas (ej. 13)" style="flex:1;background:#0f1115;border:1px solid var(--line);color:var(--txt);border-radius:10px;padding:10px;font-size:15px">
+      <button class="goal" id="addAlarm">Añadir</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="btn ghost" id="testAlarm" style="margin:0">🔔 Probar sonido</button>
+      <button class="btn ghost" id="notifBtn" style="margin:0">Activar avisos</button>
+    </div>
+  </div>
+
+  <h2>Estadísticas</h2>
+  <div class="stats">
+    <div class="stat"><div class="v" id="sCount">0</div><div class="l">Ayunos completados</div></div>
+    <div class="stat"><div class="v" id="sAvg">–</div><div class="l">Duración media</div></div>
+    <div class="stat"><div class="v" id="sMax">–</div><div class="l">Ayuno más largo</div></div>
+    <div class="stat"><div class="v" id="sStreak">0</div><div class="l">Racha (días seguidos)</div></div>
+    <div class="stat"><div class="v" id="sRate">–</div><div class="l">Objetivo cumplido</div></div>
+    <div class="stat"><div class="v" id="sTotal">0 h</div><div class="l">Horas totales</div></div>
+  </div>
+
+  <h2>Últimos 14 días</h2>
+  <div class="card chart">
+    <svg id="chart" viewBox="0 0 340 170"></svg>
+    <div class="legend"><span><i style="background:var(--acc)"></i>Objetivo cumplido</span><span><i style="background:var(--warn)"></i>No cumplido</span></div>
+  </div>
+
+  <h2>Historial</h2>
+  <div class="card" style="padding:6px 14px">
+    <ul class="hist" id="hist"></ul>
+  </div>
+
+</section>
+
+<section class="tab" id="tab-peso">
+  <h1>⚖️ Peso</h1>
+
+  <div class="card">
+    <p class="lbl">Registrar peso</p>
+    <div class="field">
+      <input class="kg" id="wKg" type="number" inputmode="decimal" step="0.1" min="20" max="400" placeholder="kg">
+      <input class="date" id="wDate" type="date">
+    </div>
+    <button class="btn start" id="wSave" style="margin-top:12px">Guardar peso</button>
+    <p class="sub" id="wLast" style="text-align:center;margin:10px 0 0"></p>
+  </div>
+
+  <h2>Resumen</h2>
+  <div class="stats">
+    <div class="stat"><div class="v" id="wNow">–</div><div class="l">Peso actual</div></div>
+    <div class="stat"><div class="v" id="wDiff">–</div><div class="l">Cambio total</div></div>
+    <div class="stat"><div class="v" id="wRate">–</div><div class="l">Ritmo semanal</div></div>
+    <div class="stat"><div class="v" id="wToGoal">–</div><div class="l" id="wToGoalL">Hasta objetivo</div></div>
+    <div class="stat"><div class="v" id="wMin">–</div><div class="l">Mínimo</div></div>
+    <div class="stat"><div class="v" id="wBmi">–</div><div class="l" id="wBmiL">IMC</div></div>
+  </div>
+
+  <h2>Gráfica</h2>
+  <div class="card chart">
+    <div class="seg" id="wRange">
+      <button data-r="30" class="on">30 días</button><button data-r="90">3 meses</button><button data-r="365">1 año</button><button data-r="0">Todo</button>
+    </div>
+    <svg id="wChart" viewBox="0 0 340 200"></svg>
+    <div class="legend"><span><i style="background:#8b92a1"></i>Peso diario</span><span><i style="background:var(--acc)"></i>Media 7 días</span><span><i style="background:#60a5fa"></i>Objetivo</span></div>
+  </div>
+
+  <h2>Informe</h2>
+  <div class="card">
+    <div class="summary" id="wSummary"></div>
+    <h3 style="font-size:14px;color:var(--mut);margin:18px 0 6px;font-weight:600">Por semanas</h3>
+    <table class="rep" id="wWeeks"></table>
+    <h3 style="font-size:14px;color:var(--mut);margin:18px 0 6px;font-weight:600">Por meses</h3>
+    <table class="rep" id="wMonths"></table>
+    <button class="btn ghost" id="wShare" style="margin-top:16px">📤 Compartir informe</button>
+  </div>
+
+  <h2>Ajustes</h2>
+  <div class="card">
+    <div class="field">
+      <div style="flex:1"><p class="lbl">Peso objetivo (kg)</p><input id="wGoal" type="number" inputmode="decimal" step="0.1" style="width:100%"></div>
+      <div style="flex:1"><p class="lbl">Altura (cm), para IMC</p><input id="wHeight" type="number" inputmode="numeric" step="1" style="width:100%"></div>
+    </div>
+  </div>
+
+  <h2>Registros</h2>
+  <div class="card" style="padding:6px 14px">
+    <ul class="hist" id="wHist"></ul>
+  </div>
+</section>
+
+  <p class="note" id="syncNote">Cargando…</p>
+</main>
+
+<nav class="tabs">
+  <button data-tab="ayuno" class="on"><span>⏱️</span>Ayuno</button>
+  <button data-tab="peso"><span>⚖️</span>Peso</button>
+</nav>
+<div class="toast" id="toast"></div>
+
+<div class="modal" id="mEdit"><div class="card">
+  <h3>Hora de inicio del ayuno</h3>
+  <p>Útil si empezaste antes y se te olvidó pulsar.</p>
+  <input type="datetime-local" id="editInput">
+  <div class="row"><button class="btn muted-btn" data-close>Cancelar</button><button class="btn start" id="editOk">Guardar</button></div>
+</div></div>
+
+<div class="modal" id="mAlarm"><div class="card" style="text-align:center">
+  <div style="font-size:48px">⏰</div>
+  <h3 id="aTitle">¡Alarma!</h3>
+  <p id="aText"></p>
+  <button class="btn start" id="aStop">Parar alarma</button>
+</div></div>
+
+<div class="modal" id="mConfirm"><div class="card">
+  <h3 id="cTitle">¿Seguro?</h3>
+  <p id="cText"></p>
+  <div class="row"><button class="btn muted-btn" data-close>Cancelar</button><button class="btn stop" id="cOk">Confirmar</button></div>
+</div></div>
+
+<script>
+(() => {
+  const GOALS = [12,14,16,18,20,24];
+  const LS_KEY = 'ayuno-intermitente-v1';
+  const CIRC = 2*Math.PI*112;
+  let state = { goal:16, current:null, history:[], alarms:[12,14,16], weights:[], wGoal:null, height:null }; // current: {start, goal, fired:[]}; history: [{start,end,goal}]
+  const ALARM_PRESETS = [12,14,16,18,20,24];
+  let dbRef = null, writing = false, pending = false;
+
+  const $ = id => document.getElementById(id);
+  const pad = n => String(n).padStart(2,'0');
+  const fmtHMS = ms => { const s=Math.max(0,Math.floor(ms/1000)); return pad(Math.floor(s/3600))+':'+pad(Math.floor(s%3600/60))+':'+pad(s%60); };
+  const fmtH = ms => { const m=Math.round(ms/60000); return Math.floor(m/60)+'h '+pad(m%60)+'m'; };
+  const fmtClock = t => new Date(t).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+  const fmtDay = t => { const d=new Date(t), today=new Date(); const y=new Date(); y.setDate(today.getDate()-1);
+    if (d.toDateString()===today.toDateString()) return 'Hoy';
+    if (d.toDateString()===y.toDateString()) return 'Ayer';
+    return d.toLocaleDateString('es-ES',{weekday:'short',day:'numeric',month:'short'}); };
+  const fmtWhen = t => { const d=new Date(t); return (d.toDateString()===new Date().toDateString()?'hoy':d.toLocaleDateString('es-ES',{weekday:'short',day:'numeric'}))+' '+fmtClock(t); };
+  const dayKey = t => { const d=new Date(t); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); };
+
+  // ---------- persistencia ----------
+  function loadLocal(){ try{ const s=localStorage.getItem(LS_KEY); if(s) state=Object.assign(state,JSON.parse(s)); }catch(e){} }
+  function saveLocal(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){} }
+  // ---------- app nativa (Android): alarmas del sistema ----------
+  const NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+  const LN = NATIVE ? window.Capacitor.Plugins.LocalNotifications : null;
+  let lastSchedKey='';
+  async function nativeSetup(){
+    if(!LN) return;
+    try{
+      await LN.createChannel({id:'alarmas', name:'Alarmas de ayuno', description:'Aviso al llegar a las horas de ayuno', importance:5, visibility:1, vibration:true, lights:true, lightColor:'#34d399'});
+      const p=await LN.checkPermissions();
+      if(p.display!=='granted') await LN.requestPermissions();
+    }catch(e){ console.log('LN setup', e); }
+  }
+  async function nativeSchedule(){
+    if(!LN) return;
+    const c=state.current;
+    const key = c ? c.start+'|'+c.goal+'|'+(state.alarms||[]).join(',') : 'none';
+    if(key===lastSchedKey) return; lastSchedKey=key;
+    try{
+      const pend=await LN.getPending();
+      if(pend.notifications && pend.notifications.length) await LN.cancel({notifications:pend.notifications.map(n=>({id:n.id}))});
+      if(!c) return;
+      const now=Date.now();
+      const list=(state.alarms||[]).filter(h=>c.start+h*3600000>now).map(h=>{
+        const lbl=(h%1?String(h).replace('.',','):h)+' horas';
+        return { id: Math.round(h*10)+1, channelId:'alarmas', title:'⏰ Llevas '+lbl+' de ayuno',
+          body: h>=c.goal ? 'Has alcanzado tu objetivo de '+c.goal+' h 🎉' : 'Sigue así 💪 Objetivo: '+c.goal+' h',
+          schedule:{ at:new Date(c.start+h*3600000), allowWhileIdle:true }, smallIcon:'ic_stat_ayuno' };
+      });
+      if(list.length) await LN.schedule({notifications:list});
+    }catch(e){ console.log('LN schedule', e); }
+  }
+
+  async function save(){
+    saveLocal();
+    nativeSchedule();
+    if(!dbRef) return;
+    if(writing){ pending=true; return; }
+    writing=true;
+    try{ await dbRef.set(JSON.parse(JSON.stringify(state))); }catch(e){ console.log('db write', e); }
+    writing=false;
+    if(pending){ pending=false; save(); }
+  }
+  async function connectDb(){
+    const note=$('syncNote');
+    const timer=setTimeout(()=>{ if(!dbRef) note.textContent='Datos guardados en este navegador.'; },10000);
+    try{
+      const [db,user]=await Promise.all([window.claude.use('db'), window.claude.use('user')]);
+      if(!db||!user){ clearTimeout(timer); note.textContent='Datos guardados en este navegador.'; return; }
+      const id=await user.id();
+      const ref=db.collection('data/users/'+id).doc('ayuno');
+      const r=await ref.get();
+      const d = r && typeof r.data==='function' ? r.data() : r;
+      clearTimeout(timer);
+      dbRef=ref;
+      if(d && Array.isArray(d.history)){
+        // fusiona por si había datos locales sin subir
+        const seen=new Set(d.history.map(h=>h.start));
+        const extra=state.history.filter(h=>!seen.has(h.start));
+        state={ goal:d.goal||state.goal, alarms:d.alarms||state.alarms, weights:d.weights||state.weights, wGoal:d.wGoal||state.wGoal, height:d.height||state.height, current:d.current||state.current||null, history:d.history.concat(extra).sort((a,b)=>b.start-a.start) };
+        if(extra.length) save(); else saveLocal();
+      } else {
+        save();
+      }
+      note.textContent='Datos sincronizados con tu cuenta · se conservan entre dispositivos.';
+      render();
+    }catch(e){ clearTimeout(timer); console.log('db', e); note.textContent='Datos guardados en este navegador.'; }
+  }
+
+  // ---------- acciones ----------
+  function start(){ unlockAudio(); state.current={start:Date.now(), goal:state.goal, fired:[]}; save(); render(); }
+
+  // ---------- alarmas ----------
+  let actx=null, ringTimer=null, ringUntil=0;
+  function unlockAudio(){
+    try{ if(!actx) actx=new (window.AudioContext||window.webkitAudioContext)(); if(actx.state==='suspended') actx.resume(); }catch(e){}
+  }
+  function beep(){
+    if(!actx) return;
+    try{
+      const t=actx.currentTime;
+      [0,0.25,0.5].forEach((off,i)=>{
+        const o=actx.createOscillator(), g=actx.createGain();
+        o.type='sine'; o.frequency.value= i===2 ? 1046 : 880;
+        g.gain.setValueAtTime(0.0001,t+off); g.gain.exponentialRampToValueAtTime(0.5,t+off+0.02); g.gain.exponentialRampToValueAtTime(0.0001,t+off+0.2);
+        o.connect(g).connect(actx.destination); o.start(t+off); o.stop(t+off+0.22);
+      });
+    }catch(e){}
+  }
+  function stopRing(){ clearInterval(ringTimer); ringTimer=null; try{ navigator.vibrate && navigator.vibrate(0); }catch(e){} close('mAlarm'); }
+  function ring(hours, isTest){
+    unlockAudio();
+    const label = (hours%1 ? hours.toFixed(1).replace('.',',') : hours)+' horas';
+    $('aTitle').textContent = isTest ? 'Prueba de alarma' : '¡Llevas '+label+' de ayuno!';
+    $('aText').textContent = isTest ? 'Así sonará cuando llegues a una de tus horas.' : (hours>=(state.current&&state.current.goal||99) ? 'Has alcanzado tu objetivo. 🎉' : 'Sigue así 💪');
+    $('mAlarm').classList.add('open');
+    clearInterval(ringTimer); ringUntil=Date.now()+(isTest?3000:30000);
+    const once=()=>{ beep(); try{ navigator.vibrate && navigator.vibrate([300,150,300]); }catch(e){} if(Date.now()>ringUntil) { clearInterval(ringTimer); ringTimer=null; } };
+    once(); ringTimer=setInterval(once,1500);
+    if(!isTest && !NATIVE){
+      try{ if('Notification' in window && Notification.permission==='granted') new Notification('Ayuno: '+label, {body:$('aText').textContent}); }catch(e){}
+      try{ document.title='⏰ '+label+' · Ayuno'; setTimeout(()=>document.title='Contador de ayuno intermitente',60000); }catch(e){}
+    }
+  }
+  function checkAlarms(el){
+    const c=state.current; if(!c) return;
+    c.fired=c.fired||[];
+    const due=(state.alarms||[]).filter(h=>el>=h*3600000 && !c.fired.includes(h));
+    if(!due.length) return;
+    c.fired.push(...due); save();
+    ring(Math.max(...due));
+  }
+  function renderAlarms(){
+    const box=$('alarms'); box.innerHTML='';
+    const list=[...new Set([...ALARM_PRESETS, ...(state.alarms||[])])].sort((a,b)=>a-b);
+    list.forEach(h=>{
+      const on=(state.alarms||[]).includes(h);
+      const b=document.createElement('button');
+      b.className='goal'+(on?' on':'');
+      b.textContent=(on?'🔔 ':'')+(h%1?String(h).replace('.',','):h)+' h';
+      b.onclick=()=>{ unlockAudio();
+        state.alarms = on ? state.alarms.filter(x=>x!==h) : [...(state.alarms||[]), h];
+        save(); renderAlarms(); };
+      box.appendChild(b);
+    });
+    const nb=$('notifBtn');
+    if(NATIVE){ nb.textContent='Permisos de alarma'; }
+    else if(!('Notification' in window)) nb.style.display='none';
+    else if(Notification.permission==='granted'){ nb.textContent='✓ Avisos activados'; nb.disabled=true; }
+    else if(Notification.permission==='denied'){ nb.textContent='Avisos bloqueados'; nb.disabled=true; }
+  }
+  $('addAlarm').onclick=()=>{
+    const v=parseFloat($('customH').value.replace(',','.'));
+    if(v>0 && v<=72){ if(!state.alarms.includes(v)) state.alarms.push(v); $('customH').value=''; save(); renderAlarms(); }
+  };
+  $('testAlarm').onclick=()=>ring(0,true);
+  $('aStop').onclick=stopRing;
+  $('notifBtn').onclick=async()=>{
+    unlockAudio();
+    if(NATIVE){
+      try{
+        await LN.requestPermissions();
+        const ex=await LN.checkExactNotificationSetting();
+        if(ex && ex.exact_alarm!=='granted') await LN.changeExactNotificationSetting();
+      }catch(e){ console.log(e); }
+      lastSchedKey=''; nativeSchedule(); return;
+    }
+    try{ await Notification.requestPermission(); }catch(e){} renderAlarms();
+  };
+  document.addEventListener('pointerdown',unlockAudio,{once:true});
+  function stop(){
+    const c=state.current; if(!c) return;
+    const end=Date.now();
+    if(end-c.start>=60000) state.history.unshift({start:c.start,end,goal:c.goal});
+    state.current=null; save(); render();
+  }
+
+  function confirmDlg(title,text,okLabel,fn){
+    $('cTitle').textContent=title; $('cText').textContent=text; $('cOk').textContent=okLabel;
+    $('cOk').onclick=()=>{ close('mConfirm'); fn(); };
+    $('mConfirm').classList.add('open');
+  }
+  const close = id => $(id).classList.remove('open');
+  document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>b.closest('.modal').classList.remove('open'));
+
+  $('mainBtn').onclick=()=>{
+    if(!state.current) return start();
+    const el=Date.now()-state.current.start, goalMs=state.current.goal*3600000;
+    if(el<goalMs) confirmDlg('¿Terminar el ayuno?','Llevas '+fmtH(el)+' de '+state.current.goal+' h. Se guardará en el historial como no cumplido.','Terminar',stop);
+    else stop();
+  };
+  $('editBtn').onclick=()=>{
+    const d=new Date(state.current.start); d.setMinutes(d.getMinutes()-d.getTimezoneOffset());
+    $('editInput').value=d.toISOString().slice(0,16);
+    $('mEdit').classList.add('open');
+  };
+  $('editOk').onclick=()=>{
+    const t=new Date($('editInput').value).getTime();
+    if(!isNaN(t) && t<=Date.now()){
+      state.current.start=t;
+      // no hacer sonar de golpe las alarmas que ya habrían pasado con la nueva hora
+      const el=Date.now()-t; state.current.fired=(state.alarms||[]).filter(h=>el>=h*3600000);
+      save(); render();
+    }
+    close('mEdit');
+  };
+
+  // ---------- render ----------
+  function renderGoals(){
+    const box=$('goals'); box.innerHTML='';
+    const active = state.current ? state.current.goal : state.goal;
+    GOALS.forEach(g=>{
+      const b=document.createElement('button');
+      b.className='goal'+(g===active?' on':''); b.textContent=g+':'+(24-g||'0');
+      if(g===24) b.textContent='24 h';
+      b.onclick=()=>{ if(state.current){ state.current.goal=g; } state.goal=g; save(); render(); };
+      box.appendChild(b);
+    });
+  }
+
+  function tick(){
+    const c=state.current, ring=$('ring');
+    if(!c){
+      $('state').textContent='Sin ayunar';
+      const last=state.history[0];
+      $('time').textContent='00:00:00';
+      $('sub').innerHTML = last ? 'Comiendo desde hace <b>'+fmtH(Date.now()-last.end)+'</b>' : 'Elige objetivo y pulsa iniciar';
+      ring.style.strokeDashoffset=CIRC; return;
+    }
+    const el=Date.now()-c.start, goalMs=c.goal*3600000, p=Math.min(1,el/goalMs);
+    const done=el>=goalMs;
+    checkAlarms(el);
+    $('state').textContent= done ? '¡Objetivo cumplido! 🎉' : 'Ayunando';
+    $('time').textContent=fmtHMS(el);
+    $('sub').innerHTML = done ? '<b>+'+fmtH(el-goalMs)+'</b> extra' : 'Quedan <b>'+fmtH(goalMs-el)+'</b> · '+Math.floor(p*100)+'%';
+    ring.style.strokeDashoffset=CIRC*(1-p);
+    ring.style.stroke= done ? 'var(--acc2)' : 'var(--acc)';
+  }
+
+  function renderStats(){
+    const h=state.history;
+    const durs=h.map(x=>x.end-x.start);
+    $('sCount').textContent=h.length;
+    $('sAvg').textContent= h.length ? fmtH(durs.reduce((a,b)=>a+b,0)/h.length) : '–';
+    $('sMax').textContent= h.length ? fmtH(Math.max(...durs)) : '–';
+    const ok=h.filter(x=>x.end-x.start>=x.goal*3600000).length;
+    $('sRate').textContent= h.length ? Math.round(ok/h.length*100)+'%' : '–';
+    $('sTotal').textContent= Math.round(durs.reduce((a,b)=>a+b,0)/3600000)+' h';
+    // racha: días consecutivos (terminando hoy o ayer) con al menos un ayuno que cumplió objetivo
+    const okDays=new Set(h.filter(x=>x.end-x.start>=x.goal*3600000).map(x=>dayKey(x.end)));
+    let streak=0; const d=new Date();
+    if(!okDays.has(dayKey(d))) d.setDate(d.getDate()-1);
+    while(okDays.has(dayKey(d))){ streak++; d.setDate(d.getDate()-1); }
+    $('sStreak').textContent=streak;
+  }
+
+  function renderChart(){
+    const svg=$('chart'), W=340, H=170, L=26, B=22, T=8, n=14;
+    const days=[]; const today=new Date(); today.setHours(0,0,0,0);
+    for(let i=n-1;i>=0;i--){ const d=new Date(today); d.setDate(d.getDate()-i); days.push(d); }
+    const byDay={}; state.history.forEach(x=>{ const k=dayKey(x.end); const dur=(x.end-x.start)/3600000;
+      if(!byDay[k]||dur>byDay[k].dur) byDay[k]={dur, ok: x.end-x.start>=x.goal*3600000}; });
+    const max=Math.max(24, ...Object.values(byDay).map(v=>Math.ceil(v.dur)));
+    const ch=H-B-T, bw=(W-L)/n;
+    const y=v=>T+ch-(v/max)*ch;
+    let s='';
+    [0,8,16,24].filter(v=>v<=max).forEach(v=>{
+      s+=`<line x1="${L}" x2="${W}" y1="${y(v)}" y2="${y(v)}" stroke="#262a33" stroke-width="1"/>`;
+      s+=`<text x="${L-6}" y="${y(v)+4}" fill="#8b92a1" font-size="10" text-anchor="end">${v}h</text>`;
+    });
+    days.forEach((d,i)=>{
+      const v=byDay[dayKey(d)], x=L+i*bw+bw*0.18, w=bw*0.64;
+      if(v){ const top=y(v.dur); s+=`<rect x="${x}" y="${top}" width="${w}" height="${T+ch-top}" rx="3" fill="${v.ok?'#34d399':'#f59e0b'}"><title>${v.dur.toFixed(1)} h</title></rect>`; }
+      if(i%2===(n-1)%2) s+=`<text x="${x+w/2}" y="${H-6}" fill="#8b92a1" font-size="10" text-anchor="middle">${d.getDate()}</text>`;
+    });
+    svg.innerHTML=s;
+  }
+
+  function renderHist(){
+    const ul=$('hist'); ul.innerHTML='';
+    if(!state.history.length){ ul.innerHTML='<li class="empty" style="display:block">Aún no hay ayunos registrados.</li>'; return; }
+    state.history.slice(0,60).forEach(x=>{
+      const dur=x.end-x.start, ok=dur>=x.goal*3600000;
+      const li=document.createElement('li');
+      li.innerHTML=`<span class="dot" style="background:${ok?'var(--acc)':'var(--warn)'}"></span>
+        <div class="main"><div class="d">${fmtDay(x.end)}</div><div class="r">${fmtWhen(x.start)} → ${fmtClock(x.end)} · objetivo ${x.goal} h</div></div>
+        <span class="h">${fmtH(dur)}</span><button class="del" aria-label="Borrar">×</button>`;
+      li.querySelector('.del').onclick=()=>confirmDlg('¿Borrar este ayuno?',fmtDay(x.end)+' · '+fmtH(dur),'Borrar',()=>{
+        state.history=state.history.filter(h=>h!==x); save(); render(); });
+      ul.appendChild(li);
+    });
+  }
+
+  function render(){
+    const c=state.current;
+    $('mainBtn').textContent= c ? 'Terminar ayuno' : 'Iniciar ayuno';
+    $('mainBtn').className='btn '+(c?'stop':'start');
+    $('editBtn').style.display= c ? 'block' : 'none';
+    $('times').style.display= c ? 'flex' : 'none';
+    if(c){ $('tStart').textContent=fmtWhen(c.start); $('tEnd').textContent=fmtWhen(c.start+c.goal*3600000); }
+    renderGoals(); renderAlarms(); tick(); if(typeof renderWeight==="function" && $("tab-peso").classList.contains("on")) renderWeight(); renderStats(); renderChart(); renderHist();
+  }
+
+  // =============== PESO ===============
+  const todayISO = () => { const d=new Date(); return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); };
+  const isoToDate = iso => { const [y,m,d]=iso.split('-').map(Number); return new Date(y,m-1,d); };
+  const kgf = (v,dec=1) => v==null||isNaN(v) ? '–' : v.toFixed(dec).replace('.',',');
+  const sgn = v => (v>0?'+':v<0?'−':'')+kgf(Math.abs(v));
+  const fmtD = (iso,opt) => isoToDate(iso).toLocaleDateString('es-ES',opt||{day:'numeric',month:'short'});
+  let wRange=30;
+
+  function sortedW(){ return (state.weights||[]).slice().sort((a,b)=>a.d<b.d?-1:1); }
+  function movingAvg(arr){ // media de los registros de los últimos 7 días naturales
+    return arr.map((p,i)=>{ const t=isoToDate(p.d).getTime(); let s=0,n=0;
+      for(let j=i;j>=0;j--){ if(t-isoToDate(arr[j].d).getTime()>6*864e5) break; s+=arr[j].kg; n++; } return s/n; });
+  }
+  function weeklyRate(arr){ // regresión lineal sobre los últimos 28 días -> kg/semana
+    if(arr.length<2) return null;
+    const last=isoToDate(arr[arr.length-1].d).getTime();
+    const pts=arr.filter(p=>last-isoToDate(p.d).getTime()<=28*864e5);
+    if(pts.length<2) return null;
+    const xs=pts.map(p=>isoToDate(p.d).getTime()/864e5), ys=pts.map(p=>p.kg);
+    const mx=xs.reduce((a,b)=>a+b)/xs.length, my=ys.reduce((a,b)=>a+b)/ys.length;
+    let num=0,den=0; xs.forEach((x,i)=>{num+=(x-mx)*(ys[i]-my);den+=(x-mx)**2;});
+    return den ? num/den*7 : null;
+  }
+  function bmiCat(b){ return b<18.5?'bajo peso':b<25?'normal':b<30?'sobrepeso':'obesidad'; }
+
+  function fastHoursInRange(a,b){ // media de horas de ayuno completadas que terminan entre a y b
+    const xs=state.history.filter(h=>h.end>=a&&h.end<b).map(h=>(h.end-h.start)/36e5);
+    return xs.length ? xs.reduce((x,y)=>x+y)/xs.length : null;
+  }
+
+  function renderWeight(){
+    const arr=sortedW();
+    if(!$('wDate').value) $('wDate').value=todayISO();
+    if(document.activeElement!==$('wGoal')) $('wGoal').value=state.wGoal||'';
+    if(document.activeElement!==$('wHeight')) $('wHeight').value=state.height||'';
+    const last=arr[arr.length-1], first=arr[0];
+    $('wLast').textContent= last ? 'Último registro: '+kgf(last.kg)+' kg · '+fmtD(last.d,{weekday:'long',day:'numeric',month:'long'}) : 'Aún no hay registros';
+    // resumen
+    $('wNow').textContent= last ? kgf(last.kg)+' kg' : '–';
+    const diff= last&&first ? last.kg-first.kg : null;
+    $('wDiff').textContent= diff==null ? '–' : sgn(diff)+' kg';
+    $('wDiff').className='v '+(diff<0?'down':diff>0?'up':'');
+    const rate=weeklyRate(arr);
+    $('wRate').textContent= rate==null ? '–' : sgn(rate)+' kg';
+    $('wRate').className='v '+(rate<0?'down':rate>0?'up':'');
+    if(state.wGoal && last){ const r=last.kg-state.wGoal; $('wToGoal').textContent= Math.abs(r)<0.05 ? '¡Logrado!' : kgf(Math.abs(r))+' kg'; $('wToGoalL').textContent= r>0?'Para bajar al objetivo':r<0?'Por debajo del objetivo':'Objetivo'; }
+    else { $('wToGoal').textContent='–'; $('wToGoalL').textContent='Hasta objetivo (pon uno en Ajustes)'; }
+    $('wMin').textContent= arr.length ? kgf(Math.min(...arr.map(p=>p.kg)))+' kg' : '–';
+    if(state.height && last){ const b=last.kg/((state.height/100)**2); $('wBmi').textContent=kgf(b); $('wBmiL').textContent='IMC · '+bmiCat(b); }
+    else { $('wBmi').textContent='–'; $('wBmiL').textContent='IMC (pon tu altura en Ajustes)'; }
+    renderWChart(arr); renderReport(arr, rate); renderWHist(arr);
+  }
+
+  function renderWChart(arr){
+    const svg=$('wChart'), W=340,H=200,L=34,R=8,T=10,B=24;
+    let pts=arr;
+    if(wRange){ const lim=Date.now()-wRange*864e5; pts=arr.filter(p=>isoToDate(p.d).getTime()>=lim); }
+    if(!pts.length){ svg.innerHTML=`<text x="${W/2}" y="${H/2}" fill="#8b92a1" font-size="13" text-anchor="middle">Sin datos en este periodo</text>`; return; }
+    const ma=movingAvg(arr).slice(arr.length-pts.length);
+    const t0=isoToDate(pts[0].d).getTime(), t1=Math.max(isoToDate(pts[pts.length-1].d).getTime(), t0+864e5);
+    let vals=pts.map(p=>p.kg); if(state.wGoal) vals.push(state.wGoal);
+    let lo=Math.min(...vals), hi=Math.max(...vals); const padv=Math.max(0.5,(hi-lo)*0.12); lo-=padv; hi+=padv;
+    const x=t=>L+(t-t0)/(t1-t0)*(W-L-R), y=v=>T+(hi-v)/(hi-lo)*(H-T-B);
+    let s='';
+    const step=(hi-lo)>12?5:(hi-lo)>5?2:(hi-lo)>2?1:0.5;
+    for(let v=Math.ceil(lo/step)*step; v<=hi; v+=step){
+      s+=`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="#262a33"/><text x="${L-5}" y="${y(v)+4}" fill="#8b92a1" font-size="10" text-anchor="end">${kgf(v,step<1?1:0)}</text>`;
+    }
+    // etiquetas de fecha (4)
+    for(let i=0;i<4;i++){ const t=t0+(t1-t0)*i/3; const d=new Date(t);
+      s+=`<text x="${x(t)}" y="${H-6}" fill="#8b92a1" font-size="10" text-anchor="${i===0?'start':i===3?'end':'middle'}">${d.toLocaleDateString('es-ES',{day:'numeric',month:'short'})}</text>`; }
+    if(state.wGoal) s+=`<line x1="${L}" x2="${W-R}" y1="${y(state.wGoal)}" y2="${y(state.wGoal)}" stroke="#60a5fa" stroke-dasharray="5 4" stroke-width="1.5"/>`;
+    const line=(a,f)=>a.map((p,i)=>(i?'L':'M')+x(isoToDate(p.d).getTime()).toFixed(1)+','+y(f(p,i)).toFixed(1)).join('');
+    s+=`<path d="${line(pts,p=>p.kg)}" fill="none" stroke="#8b92a1" stroke-width="1" opacity=".6"/>`;
+    if(pts.length<=60) pts.forEach(p=>s+=`<circle cx="${x(isoToDate(p.d).getTime())}" cy="${y(p.kg)}" r="2.6" fill="#8b92a1"><title>${fmtD(p.d)}: ${kgf(p.kg)} kg</title></circle>`);
+    if(pts.length>1) s+=`<path d="${line(pts,(p,i)=>ma[i])}" fill="none" stroke="#34d399" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+    const lp=pts[pts.length-1]; s+=`<circle cx="${x(isoToDate(lp.d).getTime())}" cy="${y(lp.kg)}" r="4.5" fill="#34d399" stroke="#0f1115" stroke-width="2"/>`;
+    svg.innerHTML=s;
+  }
+
+  function mondayOf(d){ const x=new Date(d); x.setHours(0,0,0,0); const k=(x.getDay()+6)%7; x.setDate(x.getDate()-k); return x; }
+
+  function renderReport(arr, rate){
+    const sum=$('wSummary');
+    if(!arr.length){ sum.innerHTML='<span class="sub">Registra tu peso unos días para ver el informe.</span>'; $('wWeeks').innerHTML=''; $('wMonths').innerHTML=''; return; }
+    const first=arr[0], last=arr[arr.length-1];
+    const days=Math.round((isoToDate(last.d)-isoToDate(first.d))/864e5);
+    const diff=last.kg-first.kg, pct=diff/first.kg*100;
+    let h=`Desde el <b>${fmtD(first.d,{day:'numeric',month:'long',year:'numeric'})}</b> (${days} días, ${arr.length} registros) `;
+    h+= Math.abs(diff)<0.05 ? 'tu peso se mantiene estable.' : `has ${diff<0?'bajado':'subido'} <b>${kgf(Math.abs(diff))} kg</b> (${kgf(Math.abs(pct))}%).`;
+    if(rate!=null) h+=` En las últimas 4 semanas el ritmo es de <b>${sgn(rate)} kg/semana</b>.`;
+    if(state.wGoal){
+      const r=last.kg-state.wGoal;
+      if(Math.abs(r)<0.05 || r<0 && first.kg>state.wGoal) h+=` 🎉 Has alcanzado tu objetivo de ${kgf(state.wGoal)} kg.`;
+      else { h+=` Te faltan <b>${kgf(Math.abs(r))} kg</b> para tu objetivo de ${kgf(state.wGoal)} kg.`;
+        if(rate && Math.sign(rate)===-Math.sign(r)){ const wk=Math.abs(r/rate); const eta=new Date(isoToDate(last.d).getTime()+wk*7*864e5);
+          h+=` A este ritmo lo alcanzarías hacia el <b>${eta.toLocaleDateString('es-ES',{day:'numeric',month:'long'})}</b> (~${Math.ceil(wk)} semanas).`; } }
+    }
+    const fh=fastHoursInRange(Date.now()-28*864e5, Date.now()+1);
+    if(fh) h+=` Tu ayuno medio en ese periodo ha sido de <b>${kgf(fh)} h</b>.`;
+    sum.innerHTML=h;
+
+    // semanas (últimas 8)
+    const wk={};
+    arr.forEach(p=>{ const k=mondayOf(isoToDate(p.d)).getTime(); (wk[k]=wk[k]||[]).push(p.kg); });
+    const keys=Object.keys(wk).map(Number).sort((a,b)=>a-b);
+    let rows='<tr><th>Semana</th><th>Media</th><th>Cambio</th><th>Ayuno medio</th></tr>';
+    const shown=keys.slice(-8); const out=[];
+    shown.forEach(k=>{ const i=keys.indexOf(k); const avg=wk[k].reduce((a,b)=>a+b)/wk[k].length;
+      const prev=i>0 ? wk[keys[i-1]].reduce((a,b)=>a+b)/wk[keys[i-1]].length : null;
+      const ch=prev==null?null:avg-prev; const f=fastHoursInRange(k,k+7*864e5);
+      out.unshift(`<tr><td>${new Date(k).toLocaleDateString('es-ES',{day:'numeric',month:'short'})}</td><td>${kgf(avg)}</td><td class="${ch<0?'down':ch>0?'up':''}">${ch==null?'–':sgn(ch)}</td><td>${f?kgf(f)+' h':'–'}</td></tr>`); });
+    $('wWeeks').innerHTML=rows+out.join('');
+
+    // meses
+    const mo={};
+    arr.forEach(p=>{ const k=p.d.slice(0,7); (mo[k]=mo[k]||[]).push(p); });
+    const mk=Object.keys(mo).sort();
+    let mr='<tr><th>Mes</th><th>Inicio</th><th>Fin</th><th>Cambio</th></tr>'; const mout=[];
+    mk.slice(-12).forEach(k=>{ const l=mo[k]; const a=l[0].kg, b=l[l.length-1].kg, ch=b-a;
+      const name=isoToDate(k+'-01').toLocaleDateString('es-ES',{month:'short',year:'2-digit'});
+      mout.unshift(`<tr><td>${name}</td><td>${kgf(a)}</td><td>${kgf(b)}</td><td class="${ch<0?'down':ch>0?'up':''}">${l.length>1?sgn(ch):'–'}</td></tr>`); });
+    $('wMonths').innerHTML=mr+mout.join('');
+  }
+
+  function renderWHist(arr){
+    const ul=$('wHist'); ul.innerHTML='';
+    if(!arr.length){ ul.innerHTML='<li class="empty" style="display:block">Sin registros todavía.</li>'; return; }
+    const rev=arr.slice().reverse();
+    rev.slice(0,90).forEach((p,i)=>{
+      const prev=rev[i+1], ch=prev?p.kg-prev.kg:null;
+      const li=document.createElement('li');
+      li.innerHTML=`<div class="main"><div class="d">${fmtD(p.d,{weekday:'short',day:'numeric',month:'short',year:'numeric'})}</div></div>
+        <span class="r ${ch<0?'down':ch>0?'up':''}" style="font-size:13px">${ch==null?'':sgn(ch)}</span>
+        <span class="h">${kgf(p.kg)} kg</span><button class="del" aria-label="Borrar">×</button>`;
+      li.querySelector('.del').onclick=()=>confirmDlg('¿Borrar este registro?',fmtD(p.d)+' · '+kgf(p.kg)+' kg','Borrar',()=>{
+        state.weights=state.weights.filter(w=>w.d!==p.d); save(); renderWeight(); });
+      li.querySelector('.main').onclick=()=>{ $('wKg').value=p.kg; $('wDate').value=p.d; window.scrollTo({top:0,behavior:'smooth'}); };
+      ul.appendChild(li);
+    });
+  }
+
+  function toast(msg){ const t=$('toast'); t.textContent=msg; t.style.display='block'; clearTimeout(toast._t); toast._t=setTimeout(()=>t.style.display='none',2200); }
+
+  $('wSave').onclick=()=>{
+    const kg=parseFloat(String($('wKg').value).replace(',','.')), d=$('wDate').value||todayISO();
+    if(!(kg>=20&&kg<=400)){ toast('Introduce un peso válido'); return; }
+    if(d>todayISO()){ toast('La fecha no puede ser futura'); return; }
+    state.weights=(state.weights||[]).filter(w=>w.d!==d); state.weights.push({d,kg:Math.round(kg*10)/10});
+    save(); $('wKg').value=''; $('wDate').value=todayISO(); $('wKg').blur(); renderWeight(); toast('Peso guardado ✓');
+  };
+  $('wGoal').onchange=()=>{ const v=parseFloat(String($('wGoal').value).replace(',','.')); state.wGoal= v>=20&&v<=400 ? Math.round(v*10)/10 : null; save(); renderWeight(); };
+  $('wHeight').onchange=()=>{ const v=parseFloat($('wHeight').value); state.height= v>=100&&v<=250 ? v : null; save(); renderWeight(); };
+  $('wRange').querySelectorAll('button').forEach(b=>b.onclick=()=>{
+    wRange=+b.dataset.r; $('wRange').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b)); renderWChart(sortedW()); });
+
+  function reportText(){
+    const arr=sortedW(); if(!arr.length) return 'Sin registros de peso.';
+    let t='INFORME DE PESO Y AYUNO — '+new Date().toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'})+'\n\n';
+    t+=$('wSummary').innerText+'\n\n';
+    t+='POR SEMANAS (semana · media · cambio · ayuno medio)\n';
+    $('wWeeks').querySelectorAll('tr').forEach((r,i)=>{ if(i) t+=[...r.children].map(c=>c.innerText).join(' · ')+'\n'; });
+    t+='\nPOR MESES (mes · inicio · fin · cambio)\n';
+    $('wMonths').querySelectorAll('tr').forEach((r,i)=>{ if(i) t+=[...r.children].map(c=>c.innerText).join(' · ')+'\n'; });
+    t+='\nREGISTROS\n'+arr.slice().reverse().map(p=>p.d.split('-').reverse().join('/')+'  '+kgf(p.kg)+' kg').join('\n');
+    return t;
+  }
+  $('wShare').onclick=async()=>{
+    const text=reportText();
+    const Sh = NATIVE && window.Capacitor.Plugins.Share;
+    try{
+      if(Sh){ await Sh.share({title:'Informe de peso', text, dialogTitle:'Compartir informe'}); return; }
+      if(navigator.share){ await navigator.share({title:'Informe de peso', text}); return; }
+      await navigator.clipboard.writeText(text); toast('Informe copiado al portapapeles');
+    }catch(e){ console.log(e); }
+  };
+
+  // ---------- pestañas ----------
+  function showTab(name){
+    document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t.id==='tab-'+name));
+    document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===name));
+    if(name==='peso') renderWeight();
+    window.scrollTo(0,0);
+    try{ localStorage.setItem('ayuno-tab',name); }catch(e){}
+  }
+  document.querySelectorAll('nav.tabs button').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
+
+  loadLocal(); render(); renderWeight();
+  try{ const t=localStorage.getItem('ayuno-tab'); if(t==='peso') showTab('peso'); }catch(e){}
+  setInterval(tick,1000);
+  setInterval(()=>{ renderStats(); renderChart(); }, 60000);
+  document.addEventListener('visibilitychange',()=>{ if(!document.hidden) render(); });
+  if(NATIVE){
+    $('syncNote').textContent='Las alarmas suenan aunque cierres la app. Datos guardados en este móvil.';
+    nativeSetup().then(()=>{ lastSchedKey=''; nativeSchedule(); });
+  } else (function waitClaude(tries){
+    if(window.claude && window.claude.use) return connectDb();
+    if(tries>30) return $('syncNote').textContent='Datos guardados en este navegador.';
+    setTimeout(()=>waitClaude(tries+1),100);
+  })(0);
+})();
+</script>
+</body>
+</html>
