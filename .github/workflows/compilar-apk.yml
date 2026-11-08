@@ -4,6 +4,9 @@ on:
   push:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -31,3 +34,11 @@ jobs:
         with:
           name: Ayuno-APK
           path: Ayuno.apk
+      - name: Publicar APK para descarga directa
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk-${{ github.run_number }}
+          name: Ayuno (compilación ${{ github.run_number }})
+          body: "Descarga Ayuno.apk e instálala en el móvil."
+          files: Ayuno.apk
+          make_latest: true
